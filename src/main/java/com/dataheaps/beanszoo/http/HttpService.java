@@ -7,9 +7,10 @@ import com.dataheaps.beanszoo.lifecycle.AbstractLifeCycle;
 import com.dataheaps.beanszoo.sd.Services;
 import lombok.Getter;
 import lombok.Setter;
-import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.*;
 import org.eclipse.jetty.servlet.ServletHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,8 +25,13 @@ public class HttpService extends AbstractLifeCycle {
 
     static final Logger logger = LoggerFactory.getLogger(HttpService.class);
 
-    @Getter @Setter int port;
+    @Getter @Setter int port = 8080;
+    @Getter @Setter int securePort = 8443;
     @Getter @Setter String restApiPath = "api";
+    @Getter @Setter boolean secure = false;
+    @Getter @Setter String keyStorePath = null;
+    @Getter @Setter String keyStorePassword = null;
+    @Getter @Setter String keyManagerPassword = null;
     @Getter @Setter String staticLocalPath = null;
     @Getter @Setter Map<String,String> staticFileTypes = new HashMap<>();
     @Getter @Setter Map<String,String> staticRewriteRules = new HashMap<>();
@@ -39,7 +45,26 @@ public class HttpService extends AbstractLifeCycle {
 
     Server createServer() {
 
-        Server server = new Server(port);
+        Server server = new Server();
+
+        ServerConnector connector = new ServerConnector(server);
+        connector.setPort(port);
+
+        HttpConfiguration https = new HttpConfiguration();
+        https.addCustomizer(new SecureRequestCustomizer());
+
+        if (secure) {
+            SslContextFactory sslContextFactory = new SslContextFactory();
+            sslContextFactory.setKeyStorePath(keyStorePath);
+            sslContextFactory.setKeyStorePassword(keyStorePassword);
+            sslContextFactory.setKeyManagerPassword(keyManagerPassword);
+            ServerConnector sslConnector = new ServerConnector(
+                    server,
+                    new SslConnectionFactory(sslContextFactory, "http/1.1"),
+                    new HttpConnectionFactory(https)
+            );
+            sslConnector.setPort(securePort);
+        }
 
         AspectRestServlet restServlet = new AspectRestServlet();
         restServlet.setModules(restHandlers);
