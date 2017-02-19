@@ -14,7 +14,9 @@ import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -25,7 +27,7 @@ public class HttpService extends AbstractLifeCycle {
 
     static final Logger logger = LoggerFactory.getLogger(HttpService.class);
 
-    @Getter @Setter int port = 8080;
+    @Getter @Setter int port = 8090;
     @Getter @Setter int securePort = 8443;
     @Getter @Setter String restApiPath = "api";
     @Getter @Setter boolean secure = false;
@@ -49,11 +51,13 @@ public class HttpService extends AbstractLifeCycle {
 
         ServerConnector connector = new ServerConnector(server);
         connector.setPort(port);
-
-        HttpConfiguration https = new HttpConfiguration();
-        https.addCustomizer(new SecureRequestCustomizer());
+        server.addConnector(connector);
 
         if (secure) {
+
+            HttpConfiguration https = new HttpConfiguration();
+            https.addCustomizer(new SecureRequestCustomizer());
+
             SslContextFactory sslContextFactory = new SslContextFactory();
             sslContextFactory.setKeyStorePath(keyStorePath);
             sslContextFactory.setKeyStorePassword(keyStorePassword);
@@ -64,6 +68,7 @@ public class HttpService extends AbstractLifeCycle {
                     new HttpConnectionFactory(https)
             );
             sslConnector.setPort(securePort);
+            server.addConnector(sslConnector);
         }
 
         AspectRestServlet restServlet = new AspectRestServlet();
@@ -100,6 +105,7 @@ public class HttpService extends AbstractLifeCycle {
                 logger.error("Exception while running Jetty server", e);
             }
         });
+        serverRunner.start();
 
     }
 
